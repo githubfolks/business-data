@@ -3,18 +3,17 @@ services:
     build: .
     environment:
       - NODE_ENV=${NODE_ENV:-production}
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=redis://redis:6379
       - GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY}
       - PORT=3000
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_started
     restart: unless-stopped
     networks:
       - business-net
+      - shared-net
 
   dashboard:
     build:
@@ -40,25 +39,6 @@ services:
     networks:
       - business-net
 
-  postgres:
-    image: postgres:15-alpine
-    ports:
-      - '${POSTGRES_PORT:-5433}:5432'
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - business-net
-
   redis:
     image: redis:7-alpine
     volumes:
@@ -68,9 +48,11 @@ services:
       - business-net
 
 volumes:
-  postgres_data:
   redis_data:
 
 networks:
   business-net:
     driver: bridge
+  shared-net:
+    external: true
+    name: odoo_saas_network

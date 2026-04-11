@@ -4,7 +4,7 @@ export async function connectDatabase(): Promise<void> {
   try {
     // Test the connection
     await prisma.$queryRaw`SELECT 1`;
-    console.log('PostgreSQL connected successfully via Supabase');
+    console.log('PostgreSQL connected successfully');
   } catch (error) {
     console.error('Failed to connect to PostgreSQL:', error);
     throw error;

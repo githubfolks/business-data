@@ -13,6 +13,9 @@ import recommendationRoutes from './routes/recommendationRoutes';
 
 const app: Express = express();
 
+// Trust proxy for rate limiting (needed when behind Nginx)
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(cors({ origin: config.corsOrigins }));
 app.use(express.json({ limit: '10mb' }));

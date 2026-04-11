@@ -16,6 +16,18 @@ echo "🏗️ Building and restarting containers..."
 docker compose down
 docker compose up -d --build
 
+# Wait for container to be running
+echo "⏳ Waiting for app container to be ready..."
+for i in {1..12}; do
+  STATUS=$(docker inspect -f '{{.State.Status}}' business-data-app-1 2>/dev/null || echo "not found")
+  if [ "$STATUS" = "running" ]; then
+    echo "✅ App container is running."
+    break
+  fi
+  echo "📡 Container status: $STATUS, waiting... ($i/12)"
+  sleep 5
+done
+
 # Run database migrations with retry logic
 echo "🗄️ Syncing database schema..."
 MAX_RETRIES=5
@@ -24,7 +36,15 @@ SUCCESS=false
 
 until [ $RETRY_COUNT -ge $MAX_RETRIES ]
 do
-  if docker compose exec -T app npx prisma db push --accept-data-loss; then
+  # Ensure container is still running before exec
+  if ! docker exec business-data-app-1 true 2>/dev/null; then
+    echo "⚠️ Container not accessible, waiting..."
+    sleep 5
+    RETRY_COUNT=$((RETRY_COUNT+1))
+    continue
+  fi
+
+  if docker exec -T business-data-app-1 npx prisma db push --accept-data-loss; then
     SUCCESS=true
     break
   else

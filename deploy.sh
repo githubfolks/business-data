@@ -16,6 +16,10 @@ echo "🏗️ Building and restarting containers..."
 docker compose down
 docker compose up -d --build
 
+# Run database migrations
+echo "🗄️ Syncing database schema..."
+docker compose exec -T app npx prisma db push --accept-data-loss
+
 # Prune old images to save space
 echo "🧹 Cleaning up old images..."
 docker image prune -f

@@ -36,15 +36,16 @@ SUCCESS=false
 
 until [ $RETRY_COUNT -ge $MAX_RETRIES ]
 do
-  # Ensure container is still running before exec
-  if ! docker exec business-data-app-1 true 2>/dev/null; then
-    echo "⚠️ Container not accessible, waiting..."
+  # Ensure container is running before trying to exec
+  STATUS=$(docker inspect -f '{{.State.Status}}' business-data-app-1 2>/dev/null || echo "not found")
+  if [ "$STATUS" != "running" ]; then
+    echo "⚠️ Container status is $STATUS, waiting... ($((RETRY_COUNT+1))/$MAX_RETRIES)"
     sleep 5
     RETRY_COUNT=$((RETRY_COUNT+1))
     continue
   fi
 
-  if docker exec -T business-data-app-1 npx prisma db push --accept-data-loss; then
+  if docker compose exec -T app npx prisma db push --accept-data-loss; then
     SUCCESS=true
     break
   else

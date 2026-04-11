@@ -57,4 +57,4 @@ networks:
     driver: bridge
   shared-net:
     external: true
-    name: postgres-app
+    name: pitgoa_itgoa-network

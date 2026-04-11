@@ -57,4 +57,4 @@ networks:
     driver: bridge
   shared-net:
     external: true
-    name: pitgoa_itgoa-network
+    name: itgoa_itgoa-network

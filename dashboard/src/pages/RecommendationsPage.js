@@ -15,24 +15,23 @@ function RecommendationsPage({ setError }) {
   });
   const [loading, setLoading] = useState(false);
 
-  const loadData = React.useCallback(async () => {
-    setLoading(true);
-    try {
-      let response;
-      if (tab === 'trending') {
-        response = await recommendationsAPI.getTrending(20);
-        setData(response.data.recommendations || []);
-      }
-    } catch (err) {
-      setError('Failed to load recommendations: ' + (err.response?.data?.error || err.message));
-    } finally {
-      setLoading(false);
-    }
-  }, [tab, setError]);
-
   useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        let response;
+        if (tab === 'trending') {
+          response = await recommendationsAPI.getTrending(20);
+          setData(response.data.recommendations || []);
+        }
+      } catch (err) {
+        setError('Failed to load recommendations: ' + (err.response?.data?.error || err.message));
+      } finally {
+        setLoading(false);
+      }
+    };
     loadData();
-  }, [loadData]);
+  }, [tab, setError]);
 
   const handleUserSearch = async (e) => {
     e.preventDefault();

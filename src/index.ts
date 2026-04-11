@@ -105,9 +105,6 @@ async function startServer(): Promise<void> {
   }
 }
 
-// Start server if not running on Vercel
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
-  startServer();
-}
+startServer();
 
 export default app;

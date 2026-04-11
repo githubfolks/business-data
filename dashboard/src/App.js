@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navigation from './components/Navigation';
 import SearchPage from './pages/SearchPage';
@@ -8,7 +8,6 @@ import BusinessDetailPage from './pages/BusinessDetailPage';
 import './App.css';
 
 function App() {
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   return (

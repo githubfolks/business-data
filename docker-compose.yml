@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/business_platform
+      - REDIS_URL=redis://redis:6379
+      - GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY}
+      - PORT=3000
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: ./dashboard
+      args:
+        - REACT_APP_API_URL=http://localhost:3000/api/v1
+    ports:
+      - '3001:3000'
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - '5433:5432'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=business_platform
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6380:6379'
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

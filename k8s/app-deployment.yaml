@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: business-platform
+  labels:
+    app: business-platform
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: business-platform
+  template:
+    metadata:
+      labels:
+        app: business-platform
+    spec:
+      containers:
+      - name: app
+        image: business-platform:1.0.0
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: MONGODB_URI
+          value: "mongodb://mongo:27017/business-platform"
+        - name: REDIS_URL
+          value: "redis://redis:6379"
+        - name: GOOGLE_PLACES_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: business-platform-secrets
+              key: google-places-api-key
+        - name: PORT
+          value: "3000"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5

@@ -15,11 +15,7 @@ function RecommendationsPage({ setError }) {
   });
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [tab]);
-
-  const loadData = async () => {
+  const loadData = React.useCallback(async () => {
     setLoading(true);
     try {
       let response;
@@ -32,7 +28,11 @@ function RecommendationsPage({ setError }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tab, setError]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleUserSearch = async (e) => {
     e.preventDefault();

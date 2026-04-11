@@ -5,11 +5,11 @@ set -e
 
 echo "🚀 Starting deployment to VPS..."
 
-# Pull latest changes
-echo "📥 Pulling latest changes from git..."
-git stash
-git pull origin main
-git stash pop || true
+# Git pulling removed to prevent further conflicts during stabilization
+# echo "📥 Pulling latest changes from git..."
+# git stash
+# git pull origin main
+# git stash pop || true
 
 # Build and restart containers
 echo "🏗️ Building and restarting containers..."

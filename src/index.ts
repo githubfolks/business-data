@@ -56,6 +56,16 @@ const ingestLimiter = rateLimit({
 // Apply global rate limiter to all api routes
 app.use('/api/v1', globalLimiter);
 
+// API Root/Health
+app.get('/api/v1', (_req: Request, res: Response) => {
+  return res.status(200).json({
+    status: 'ok',
+    message: 'Business Intelligence Platform API v1',
+    docs: '/api/v1/docs',
+    health: '/api/v1/health'
+  });
+});
+
 // API Routes
 app.use('/api/v1/ingest', ingestLimiter, ingestRoutes);
 app.use('/api/v1/search', searchRoutes);

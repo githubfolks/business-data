@@ -95,6 +95,8 @@ app.use((error: any, _req: Request, res: Response, _next: NextFunction) => {
 // Start server
 async function startServer(): Promise<void> {
   try {
+    const dbHost = config.databaseUrl.split('@')[1]?.split(':')[0] || 'localhost';
+    console.log(`Connecting to database at: ${dbHost}...`);
     await connectDatabase();
 
     app.listen(config.port, () => {

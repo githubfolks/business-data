@@ -65,5 +65,5 @@ echo "🧹 Cleaning up old images..."
 docker image prune -f
 
 echo "✅ Deployment successful!"
-echo "📡 Dashboard: http://localhost:3000"
-echo "📡 API: http://localhost:3001/api/v1"
+echo "📡 Dashboard: http://65.20.90.180:8081"
+echo "📡 API: http://65.20.90.180:3001/api/v1"

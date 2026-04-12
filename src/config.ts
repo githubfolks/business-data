@@ -18,7 +18,7 @@ const getDefaultCorsOrigins = (): string => {
 export const config = {
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
-  databaseUrl: process.env.DATABASE_URL || process.env.POSTGRES_URL || 'postgresql://localhost/business-platform',
+  databaseUrl: process.env.DATABASE_URL || process.env.POSTGRES_URL || (process.env.NODE_ENV === 'production' ? 'postgresql://postgres-app:5432/app_db' : 'postgresql://localhost/business-platform'),
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
   googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY || '',
   logLevel: process.env.LOG_LEVEL || 'info',

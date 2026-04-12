@@ -11,8 +11,7 @@ services:
       redis:
         condition: service_started
     restart: unless-stopped
-    volumes:
-      - ./dist:/app/dist
+
     networks:
       - business-net
       - shared-net

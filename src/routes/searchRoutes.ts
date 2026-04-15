@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { BusinessSearchService, SearchQuery } from '../services/BusinessSearchService';
 import { GooglePlacesClient } from '../services/GooglePlacesClient';
 import { BusinessIngestionService } from '../services/BusinessIngestionService';
+import { BusinessNormalizer } from '../services/BusinessNormalizer';
 
 const router = Router();
 const searchService = new BusinessSearchService();
@@ -291,20 +292,73 @@ router.get('/hybrid', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/v1/search/external
+ * Real-time external search via Google Places (no DB ingestion)
+ */
+router.get('/external', async (req: Request, res: Response) => {
+  try {
+    const { query, limit = 20 } = req.query;
+
+    if (!query) {
+      return res.status(400).json({ error: 'query parameter is required' });
+    }
+
+    const businesses = await searchService.externalSearch(String(query), Number(limit));
+
+    return res.status(200).json({
+      businesses,
+      total: businesses.length,
+      source: 'google_places_realtime',
+    });
+  } catch (error) {
+    console.error('External search error:', error);
+    return res.status(500).json({
+      error: 'External search failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
  * GET /api/v1/search/:id
- * Get business by ID
+ * Get business by ID (Internal UUID or External Google ID)
  */
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
 
-    const business = await searchService.getById(id);
-
-    if (!business) {
-      return res.status(404).json({ error: 'Business not found' });
+    // 1. Try internal database lookup first (if not explicitly a Google ID)
+    if (!id.startsWith('google_')) {
+      try {
+        const business = await searchService.getById(id);
+        if (business) {
+          return res.status(200).json(business);
+        }
+      } catch (err) {
+        // Continue if UUID format is invalid or lookup fails
+      }
     }
 
-    return res.status(200).json(business);
+    // 2. If it is a Google ID or not found in DB, fetch real-time details
+    if (id.startsWith('google_')) {
+      const placeId = id.replace('google_', '');
+      try {
+        console.log(`Fetching real-time details for Google Place: ${placeId}`);
+        const details = await googlePlacesClient.getPlaceDetails(placeId);
+        const normalized = BusinessNormalizer.normalizeGooglePlace(details);
+        return res.status(200).json(normalized);
+      } catch (err) {
+        console.error(`Failed to fetch real-time details for ${id}:`, err);
+      }
+    }
+
+    // 3. Fallback: check DB by external_id
+    const businessByExt = await searchService.getByExternalId(id);
+    if (businessByExt) {
+      return res.status(200).json(businessByExt);
+    }
+
+    return res.status(404).json({ error: 'Business not found' });
   } catch (error) {
     return next(error);
   }

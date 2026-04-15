@@ -30,6 +30,9 @@ export const searchAPI = {
   
   getStatistics: () =>
     api.get('/search/stats'),
+  
+  externalSearch: (query, limit = 20) =>
+    api.get('/search/external', { params: { query, limit } }),
 };
 
 export const analyticsAPI = {

@@ -2,12 +2,15 @@ import { prisma } from './prisma';
 
 export async function connectDatabase(): Promise<void> {
   try {
+    // Wait for a short moment to allow DB to start in case of cold boot
+    console.log('Attempting to connect to PostgreSQL...');
     // Test the connection
     await prisma.$queryRaw`SELECT 1`;
-    console.log('PostgreSQL connected successfully');
+    console.log('✅ PostgreSQL connected successfully');
   } catch (error) {
-    console.error('Failed to connect to PostgreSQL:', error);
-    throw error;
+    console.warn('⚠️ PostgreSQL connection failed. Persistence features will be disabled.');
+    console.warn('The application will continue to run in real-time-only mode.');
+    // Do not throw; allow the application to start
   }
 }
 

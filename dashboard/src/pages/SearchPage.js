@@ -1,26 +1,28 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { searchAPI } from '../api';
-import BusinessCard from '../components/BusinessCard';
 import ResultsTable from '../components/ResultsTable';
+import MapComponent from '../components/MapComponent';
+import BusinessDetailModal from '../components/BusinessDetailModal';
 import './SearchPage.css';
 
 function SearchPage({ setError }) {
   const navigate = useNavigate();
-  const [query, setQuery] = useState('');  const [results, setResults] = useState([]);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
-  const [viewMode, setViewMode] = useState('cards'); // 'table' or 'cards'
+  const [hasSearched, setHasSearched] = useState(false);
+  const [selectedBusinessId, setSelectedBusinessId] = useState(null);
 
-
-  const handleSimpleTextSearch = async (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
     if (!query.trim()) return;
 
     setLoading(true);
+    setHasSearched(true);
     try {
-      const response = await searchAPI.search(query, page, 20);      setResults(response.data.businesses || response.data);
-      setPage(1);
+      const response = await searchAPI.externalSearch(query, 20);
+      setResults(response.data.businesses || []);
     } catch (err) {
       setError('Search failed: ' + (err.response?.data?.error || err.message));
       setResults([]);
@@ -29,87 +31,71 @@ function SearchPage({ setError }) {
     }
   };
 
-
   const handleBusinessClick = (business) => {
-    navigate(`/business/${business.id || business._id}`);
+    setSelectedBusinessId(business.id || business.external_id);
   };
 
   return (
-    <div className="search-page container">
-      <div className="search-header">
-        <h1>🔍 Search Businesses</h1>
-        <p>Find and explore businesses using advanced filters</p>
-      </div>
-
-      {/* Unified Search Form */}
-      <form onSubmit={handleSimpleTextSearch} className="search-form">
-        <div className="form-row">
-          <input
-            type="text"
-            placeholder="Search businesses by name, category, or location (e.g., Barbershop in London)..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="search-input-large"
-          />
-          <button type="submit" className="button" disabled={loading}>
-            {loading ? 'Searching...' : 'Search'}
-          </button>
+    <div className="search-page-new">
+      <div className="search-top-bar">
+        <div className="container">
+          <form onSubmit={handleSearch} className="search-form-inline">
+            <input
+              type="text"
+              placeholder="E.g., barbershop in 35213..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="search-input"
+            />
+            <button type="submit" className="search-button" disabled={loading}>
+              {loading ? 'Searching...' : 'Search'}
+            </button>
+          </form>
         </div>
-      </form>
-
-
-      {/* Results Section */}
-      <div className="search-results">
-        {loading && (
-          <div className="loading">
-            <div className="spinner"></div>
-            <p>Searching for businesses...</p>
-          </div>
-        )}
-
-        {!loading && results.length === 0 && query && (
-          <div className="no-results">
-            <p>❌ No businesses found matching your search criteria.</p>
-            <p className="sub-text">Try adjusting your filters or search terms</p>
-          </div>
-        )}
-
-        {!loading && results.length > 0 && (
-          <div className="results-section">
-            <div className="results-toolbar">
-              <p className="results-count">Found {results.length} businesses</p>
-              <div className="view-toggle">
-                <button
-                  className={`view-btn ${viewMode === 'table' ? 'active' : ''}`}
-                  onClick={() => setViewMode('table')}
-                >
-                  📊 Table View
-                </button>
-                <button
-                  className={`view-btn ${viewMode === 'cards' ? 'active' : ''}`}
-                  onClick={() => setViewMode('cards')}
-                >
-                  🎴 Card View
-                </button>
-              </div>
-            </div>
-
-            {viewMode === 'table' ? (
-              <ResultsTable businesses={results} onRowClick={handleBusinessClick} />
-            ) : (
-              <div className="grid">
-                {results.map((business) => (
-                  <BusinessCard
-                    key={business.id || business._id}
-                    business={business}
-                    onClick={() => handleBusinessClick(business)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </div>
+
+      <div className="search-content-split">
+        <div className="map-panel">
+          <MapComponent 
+            businesses={results} 
+            onBusinessClick={handleBusinessClick} 
+          />
+        </div>
+        
+        <div className="results-panel">
+          {loading ? (
+            <div className="panel-loading">
+              <div className="spinner"></div>
+              <p>Fetching real-time results...</p>
+            </div>
+          ) : results.length > 0 ? (
+            <div className="panel-results">
+              <div className="results-info">
+                Found {results.length} businesses matching your search.
+              </div>
+              <ResultsTable 
+                businesses={results} 
+                onRowClick={handleBusinessClick} 
+              />
+            </div>
+          ) : hasSearched ? (
+            <div className="panel-empty">
+              <h3>No results found</h3>
+              <p>Try searching for something else, like "coffee shop in Downtown".</p>
+            </div>
+          ) : (
+            <div className="panel-welcome">
+              <h3>Ready to search?</h3>
+              <p>Enter a business type and location above to see real-time results on the map and in the table.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <BusinessDetailModal 
+        businessId={selectedBusinessId} 
+        onClose={() => setSelectedBusinessId(null)} 
+      />
     </div>
   );
 }

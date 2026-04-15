@@ -278,5 +278,29 @@ export class BusinessSearchService {
       take: options.limit || 100,
     })) as unknown as IBusinessDocument[];
   }
+
+  /**
+   * Perform real-time external search via Google Places (no DB ingestion)
+   */
+  async externalSearch(query: string, limit: number = 20): Promise<IBusinessDocument[]> {
+    const { GooglePlacesClient } = require('./GooglePlacesClient');
+    const { BusinessNormalizer } = require('./BusinessNormalizer');
+    
+    const googlePlacesClient = new GooglePlacesClient();
+    const places = await googlePlacesClient.textSearch(query);
+    
+    if (places.length === 0) return [];
+
+    // Get detailed info for results
+    const detailedResults = await Promise.all(
+      places.slice(0, limit).map((place: any) =>
+        googlePlacesClient.getPlaceDetails(place.place_id).catch(() => null)
+      )
+    );
+
+    return detailedResults
+      .filter(r => r !== null)
+      .map(r => BusinessNormalizer.normalizeGooglePlace(r)) as IBusinessDocument[];
+  }
 }
 

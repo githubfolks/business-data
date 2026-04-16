@@ -21,12 +21,16 @@ async function performHybridSearch(query: string, page: number, limit: number) {
 
   // Also search Google Places in parallel
   try {
-    const places = await googlePlacesClient.textSearch(query);
+    // If limit is higher than 20, we may need multiple pages
+    const places = limit > 20 
+      ? await googlePlacesClient.searchAll(query, Math.ceil(limit / 20))
+      : (await googlePlacesClient.textSearch(query)).results;
 
     if (places.length > 0) {
-      // Get details for first 5 results
+      // Get details for more results (up to 20 for ingestion)
+      const ingestLimit = Math.min(places.length, 20);
       const detailedResults = await Promise.all(
-        places.slice(0, 5).map(place =>
+        places.slice(0, ingestLimit).map(place =>
           googlePlacesClient.getPlaceDetails(place.place_id).catch(err => {
             console.error(`Failed to get details for ${place.place_id}:`, err);
             return null;
@@ -202,10 +206,11 @@ router.get('/google', async (req: Request, res: Response) => {
     }
 
     let googleResults: any[] = [];
+    let nextPageToken: string | undefined;
 
     // If coordinates provided, use nearby search
     if (latitude && longitude) {
-      googleResults = await googlePlacesClient.nearbySearch(
+      const response = await googlePlacesClient.nearbySearch(
         {
           latitude: Number(latitude),
           longitude: Number(longitude),
@@ -213,11 +218,18 @@ router.get('/google', async (req: Request, res: Response) => {
         {
           query: String(query),
           radius: Number(radius),
+          pageToken: req.query.pagetoken as string,
         }
       );
+      googleResults = response.results;
+      nextPageToken = response.next_page_token;
     } else {
       // Use text search
-      googleResults = await googlePlacesClient.textSearch(String(query));
+      const response = await googlePlacesClient.textSearch(String(query), {
+        pageToken: req.query.pagetoken as string,
+      });
+      googleResults = response.results;
+      nextPageToken = response.next_page_token;
     }
 
     if (googleResults.length === 0) {
@@ -256,6 +268,7 @@ router.get('/google', async (req: Request, res: Response) => {
       page: Number(page),
       page_size: Number(limit),
       pages: Math.ceil(ingestedBusinesses.length / Number(limit)),
+      next_page_token: nextPageToken,
       source: 'google_places',
     });
   } catch (error) {
@@ -297,17 +310,22 @@ router.get('/hybrid', async (req: Request, res: Response) => {
  */
 router.get('/external', async (req: Request, res: Response) => {
   try {
-    const { query, limit = 20 } = req.query;
+    const { query, limit = 20, pagetoken } = req.query;
 
     if (!query) {
       return res.status(400).json({ error: 'query parameter is required' });
     }
 
-    const businesses = await searchService.externalSearch(String(query), Number(limit));
+    const { businesses, next_page_token } = await searchService.externalSearch(
+      String(query), 
+      Number(limit), 
+      pagetoken ? String(pagetoken) : undefined
+    );
 
     return res.status(200).json({
       businesses,
       total: businesses.length,
+      next_page_token,
       source: 'google_places_realtime',
     });
   } catch (error) {

@@ -62,7 +62,7 @@ function MapComponent({ businesses, onBusinessClick }) {
       .filter(b => b.latitude && b.longitude)
       .map((business) => (
         <Marker
-          key={business.id || business.external_id}
+          key={`${business.id || business.external_id}_${business.latitude}_${business.longitude}`}
           position={{ lat: business.latitude, lng: business.longitude }}
           onClick={() => {
             setSelected(business);

@@ -4,15 +4,34 @@ import path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 // Default CORS origins based on environment
-const getDefaultCorsOrigins = (): string => {
+const getDefaultCorsOrigins = (): string[] => {
   const nodeEnv = process.env.NODE_ENV || 'development';
+  const rawOrigins = process.env.CORS_ORIGINS;
   
+  if (rawOrigins) {
+    return rawOrigins.split(',').map(origin => origin.trim()).filter(Boolean);
+  }
+
   if (nodeEnv === 'production') {
-    return process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:3001';
+    return [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:8081',
+      'http://localhost:5173',
+      'http://65.20.90.180:8081',
+      'http://65.20.90.180:3001'
+    ];
   }
   
   // Development - allow local ports
-  return process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:3001,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:3001';
+  return [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:5173',
+    'http://localhost:8081',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001'
+  ];
 };
 
 export const config = {
@@ -22,7 +41,7 @@ export const config = {
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
   googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY || '',
   logLevel: process.env.LOG_LEVEL || 'info',
-  corsOrigins: getDefaultCorsOrigins().split(','),
+  corsOrigins: getDefaultCorsOrigins(),
   supabase: {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',

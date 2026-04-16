@@ -6,6 +6,7 @@ export const schemas = {
     query: Joi.string().required().min(1).max(500),
     language: Joi.string().default('en'),
     radius: Joi.number().optional().min(0),
+    pagetoken: Joi.string().optional(),
   }),
 
   googlePlacesNearby: Joi.object({
@@ -13,6 +14,7 @@ export const schemas = {
     longitude: Joi.number().required().min(-180).max(180),
     radius: Joi.number().default(1500).min(0).max(50000),
     type: Joi.string().optional(),
+    pagetoken: Joi.string().optional(),
   }),
 
   ingestBatch: Joi.object({

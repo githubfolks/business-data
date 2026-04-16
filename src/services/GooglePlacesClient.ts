@@ -7,11 +7,19 @@ export interface GooglePlacesSearchOptions {
   radius?: number;
   type?: string;
   language?: string;
+  pageToken?: string;
 }
 
 export interface GooglePlacesDetails {
   place_id: string;
   [key: string]: any;
+}
+
+export interface GooglePlacesResponse {
+  results: GooglePlacesDetails[];
+  next_page_token?: string;
+  status: string;
+  error_message?: string;
 }
 
 export class GooglePlacesClient {
@@ -29,21 +37,28 @@ export class GooglePlacesClient {
   /**
    * Search for places using text query
    */
-  async textSearch(query: string, options: Partial<GooglePlacesSearchOptions> = {}): Promise<GooglePlacesDetails[]> {
+  async textSearch(query: string, options: Partial<GooglePlacesSearchOptions> = {}): Promise<{ results: GooglePlacesDetails[], next_page_token?: string }> {
     try {
-      const params = {
+      const params: any = {
         query,
         key: this.apiKey,
         language: options.language || 'en',
       };
 
-      const response = await this.client.get(`${this.baseUrl}/place/textsearch/json`, { params });
-
-      if (response.data.status !== 'OK') {
-        throw new Error(`Google Places API error: ${response.data.status}`);
+      if (options.pageToken) {
+        params.pagetoken = options.pageToken;
       }
 
-      return response.data.results || [];
+      const response = await this.client.get(`${this.baseUrl}/place/textsearch/json`, { params });
+
+      if (response.data.status !== 'OK' && response.data.status !== 'ZERO_RESULTS') {
+        throw new Error(`Google Places API error: ${response.data.status}${response.data.error_message ? ` - ${response.data.error_message}` : ''}`);
+      }
+
+      return {
+        results: response.data.results || [],
+        next_page_token: response.data.next_page_token
+      };
     } catch (error) {
       throw new Error(`Failed to search places: ${error}`);
     }
@@ -55,9 +70,9 @@ export class GooglePlacesClient {
   async nearbySearch(
     location: { latitude: number; longitude: number },
     options: Partial<GooglePlacesSearchOptions> = {}
-  ): Promise<GooglePlacesDetails[]> {
+  ): Promise<{ results: GooglePlacesDetails[], next_page_token?: string }> {
     try {
-      const params = {
+      const params: any = {
         location: `${location.latitude},${location.longitude}`,
         radius: options.radius || 1500,
         type: options.type,
@@ -65,16 +80,46 @@ export class GooglePlacesClient {
         language: options.language || 'en',
       };
 
+      if (options.pageToken) {
+        params.pagetoken = options.pageToken;
+      }
+
       const response = await this.client.get(`${this.baseUrl}/place/nearbysearch/json`, { params });
 
       if (response.data.status !== 'OK' && response.data.status !== 'ZERO_RESULTS') {
-        throw new Error(`Google Places API error: ${response.data.status}`);
+        throw new Error(`Google Places API error: ${response.data.status}${response.data.error_message ? ` - ${response.data.error_message}` : ''}`);
       }
 
-      return response.data.results || [];
+      return {
+        results: response.data.results || [],
+        next_page_token: response.data.next_page_token
+      };
     } catch (error) {
       throw new Error(`Failed to search nearby places: ${error}`);
     }
+  }
+
+  /**
+   * Fetch multiple pages of results (up to 3 pages / 60 results)
+   */
+  async searchAll(query: string, maxPages: number = 3): Promise<GooglePlacesDetails[]> {
+    let allResults: GooglePlacesDetails[] = [];
+    let pageToken: string | undefined;
+    let pagesFetched = 0;
+
+    do {
+      const response = await this.textSearch(query, { pageToken });
+      allResults = [...allResults, ...response.results];
+      pageToken = response.next_page_token;
+      pagesFetched++;
+
+      // Google requires a short delay before the next_page_token becomes valid
+      if (pageToken && pagesFetched < maxPages) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    } while (pageToken && pagesFetched < maxPages);
+
+    return allResults;
   }
 
   /**
@@ -119,7 +164,8 @@ export class GooglePlacesClient {
    * Search for places by name and city
    */
   async findByNameAndCity(name: string, city: string): Promise<GooglePlacesDetails[]> {
-    return this.textSearch(`${name} ${city}`);
+    const response = await this.textSearch(`${name} ${city}`);
+    return response.results;
   }
 
   /**

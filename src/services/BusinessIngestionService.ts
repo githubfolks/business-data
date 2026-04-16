@@ -23,7 +23,7 @@ export class BusinessIngestionService {
     query: string,
     options: Partial<GooglePlacesSearchOptions & DataIngestionOptions> = {}
   ): Promise<IBusinessDocument[]> {
-    const results = await this.googlePlacesClient.textSearch(query, options);
+    const { results } = await this.googlePlacesClient.textSearch(query, options);
     const ingested: IBusinessDocument[] = [];
 
     for (const place of results) {
@@ -63,7 +63,7 @@ export class BusinessIngestionService {
     location: { latitude: number; longitude: number },
     options: Partial<GooglePlacesSearchOptions & DataIngestionOptions> = {}
   ): Promise<IBusinessDocument[]> {
-    const results = await this.googlePlacesClient.nearbySearch(location, options);
+    const { results } = await this.googlePlacesClient.nearbySearch(location, options);
     const ingested: IBusinessDocument[] = [];
 
     for (const place of results) {

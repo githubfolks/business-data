@@ -17,7 +17,11 @@ const app: Express = express();
 app.set('trust proxy', 1);
 
 // Middleware
-app.use(cors({ origin: config.corsOrigins }));
+console.log('Allowed CORS Origins:', config.corsOrigins);
+app.use(cors({ 
+  origin: config.corsOrigins,
+  optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 

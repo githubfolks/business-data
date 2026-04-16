@@ -282,14 +282,17 @@ export class BusinessSearchService {
   /**
    * Perform real-time external search via Google Places (no DB ingestion)
    */
-  async externalSearch(query: string, limit: number = 20): Promise<IBusinessDocument[]> {
+  async externalSearch(query: string, limit: number = 20, pageToken?: string): Promise<{ businesses: IBusinessDocument[], next_page_token?: string }> {
     const { GooglePlacesClient } = require('./GooglePlacesClient');
     const { BusinessNormalizer } = require('./BusinessNormalizer');
     
     const googlePlacesClient = new GooglePlacesClient();
-    const places = await googlePlacesClient.textSearch(query);
+    console.log(`External search for: "${query}", limit: ${limit}, pageToken: ${pageToken ? 'PRESENT' : 'NONE'}`);
+    const { results: places, next_page_token } = await googlePlacesClient.textSearch(query, { pageToken });
     
-    if (places.length === 0) return [];
+    console.log(`Google results: ${places.length}, fresh next_page_token: ${next_page_token ? 'YES' : 'NO'}`);
+    
+    if (places.length === 0) return { businesses: [] };
 
     // Get detailed info for results
     const detailedResults = await Promise.all(
@@ -298,9 +301,12 @@ export class BusinessSearchService {
       )
     );
 
-    return detailedResults
-      .filter(r => r !== null)
-      .map(r => BusinessNormalizer.normalizeGooglePlace(r)) as IBusinessDocument[];
+    return {
+      businesses: detailedResults
+        .filter(r => r !== null)
+        .map(r => BusinessNormalizer.normalizeGooglePlace(r)) as IBusinessDocument[],
+      next_page_token
+    };
   }
 }
 

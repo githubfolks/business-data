@@ -8,7 +8,9 @@ import './SearchPage.css';
 
 function SearchPage({ setError }) {
   const navigate = useNavigate();
-  const [query, setQuery] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [pincode, setPincode] = useState('');
+  const [radius, setRadius] = useState(5);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -17,17 +19,38 @@ function SearchPage({ setError }) {
   const [nextPageToken, setNextPageToken] = useState(null);
   const [limit, setLimit] = useState(20);
   const [source, setSource] = useState('local');
+  
+  // Track last used search params for "Load More"
+  const [lastSearchParams, setLastSearchParams] = useState(null);
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (!query.trim()) return;
+    if (!businessName.trim() && !pincode.trim()) {
+      setError('Please enter at least a business name or a pincode.');
+      return;
+    }
 
     setLoading(true);
     setHasSearched(true);
     setNextPageToken(null);
+    
+    const params = {
+      query: businessName || 'businesses', // Fallback if name is empty
+      limit,
+      pincode: pincode.trim() || null,
+      radius: radius
+    };
+    
+    setLastSearchParams(params);
+
     try {
-      // Use external search for real-time results
-      const response = await searchAPI.externalSearch(query, limit);
+      const response = await searchAPI.externalSearch(
+        params.query, 
+        params.limit, 
+        null, 
+        params.pincode, 
+        params.radius
+      );
       setResults(response.data.businesses || []);
       setNextPageToken(response.data.next_page_token);
       setSource(response.data.source || 'google_places_realtime');
@@ -40,11 +63,17 @@ function SearchPage({ setError }) {
   };
 
   const handleLoadMore = async () => {
-    if (!nextPageToken || loadingMore) return;
+    if (!nextPageToken || loadingMore || !lastSearchParams) return;
 
     setLoadingMore(true);
     try {
-      const response = await searchAPI.externalSearch(query, limit, nextPageToken);
+      const response = await searchAPI.externalSearch(
+        lastSearchParams.query, 
+        lastSearchParams.limit, 
+        nextPageToken,
+        lastSearchParams.pincode,
+        lastSearchParams.radius
+      );
       const newBusinesses = response.data.businesses || [];
       setResults(prev => [...prev, ...newBusinesses]);
       setNextPageToken(response.data.next_page_token);
@@ -63,28 +92,65 @@ function SearchPage({ setError }) {
     <div className="search-page-new">
       <div className="search-top-bar">
         <div className="container">
-          <form onSubmit={handleSearch} className="search-form-inline">
-            <div className="search-input-group">
-              <input
-                type="text"
-                placeholder="E.g., barbershop in 35213..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="search-input"
-              />
-              <select 
-                value={limit} 
-                onChange={(e) => setLimit(Number(e.target.value))}
-                className="limit-select"
-              >
-                <option value={20}>20 results</option>
-                <option value={50}>50 results</option>
-                <option value={100}>100 results</option>
-              </select>
+          <form onSubmit={handleSearch} className="search-form-complex">
+            <div className="search-form-row">
+              <div className="input-field">
+                <label htmlFor="businessName">Business Name / Category</label>
+                <input
+                  id="businessName"
+                  type="text"
+                  placeholder="E.g., Pizza, Barbershop..."
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                  className="search-input"
+                />
+              </div>
+              <div className="input-field pincode-field">
+                <label htmlFor="pincode">Pincode (Optional)</label>
+                <input
+                  id="pincode"
+                  type="text"
+                  placeholder="E.g., 35213"
+                  value={pincode}
+                  onChange={(e) => setPincode(e.target.value)}
+                  className="search-input"
+                />
+              </div>
             </div>
-            <button type="submit" className="search-button" disabled={loading}>
-              {loading ? 'Searching...' : 'Search'}
-            </button>
+            
+            <div className="search-form-row secondary-row">
+              <div className="input-field range-field">
+                <label htmlFor="radius">Search Range: <span className="range-value">{radius} km</span></label>
+                <input
+                  id="radius"
+                  type="range"
+                  min="1"
+                  max="50"
+                  step="1"
+                  value={radius}
+                  onChange={(e) => setRadius(Number(e.target.value))}
+                  className="range-slider"
+                />
+              </div>
+              
+              <div className="input-field limit-field">
+                <label htmlFor="limit">Display</label>
+                <select 
+                  id="limit"
+                  value={limit} 
+                  onChange={(e) => setLimit(Number(e.target.value))}
+                  className="limit-select"
+                >
+                  <option value={20}>20 results</option>
+                  <option value={50}>50 results</option>
+                  <option value={100}>100 results</option>
+                </select>
+              </div>
+
+              <button type="submit" className="search-button-large" disabled={loading}>
+                {loading ? 'Searching...' : 'Search Places'}
+              </button>
+            </div>
           </form>
         </div>
       </div>
@@ -129,12 +195,12 @@ function SearchPage({ setError }) {
           ) : hasSearched ? (
             <div className="panel-empty">
               <h3>No results found</h3>
-              <p>Try searching for something else, like "coffee shop in Downtown".</p>
+              <p>Try searching for something else, like "coffee shop" with a wider range.</p>
             </div>
           ) : (
             <div className="panel-welcome">
-              <h3>Ready to search?</h3>
-              <p>Enter a business type and location above to see real-time results on the map and in the table.</p>
+              <h3>Find Businesses Nearby</h3>
+              <p>Enter a business name and pincode to discover places around you within your preferred range.</p>
             </div>
           )}
         </div>

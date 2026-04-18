@@ -310,16 +310,39 @@ router.get('/hybrid', async (req: Request, res: Response) => {
  */
 router.get('/external', async (req: Request, res: Response) => {
   try {
-    const { query, limit = 20, pagetoken } = req.query;
+    const { query, limit = 20, pagetoken, pincode, radius } = req.query;
 
     if (!query) {
       return res.status(400).json({ error: 'query parameter is required' });
     }
 
+    let lat, lng;
+    let finalQuery = String(query);
+
+    if (pincode) {
+      try {
+        const coords = await googlePlacesClient.geocodePincode(String(pincode));
+        if (coords) {
+          lat = coords.latitude;
+          lng = coords.longitude;
+        } else {
+          // If no coordinates found, refine the text query
+          finalQuery = `${query} in ${pincode}`;
+        }
+      } catch (err: any) {
+        console.warn(`Geocoding failed for pincode ${pincode}: ${err.message}`);
+        // Fallback: search by appending pincode to query if geocoding is restricted/fails
+        finalQuery = `${query} in ${pincode}`;
+      }
+    }
+
     const { businesses, next_page_token } = await searchService.externalSearch(
-      String(query), 
+      finalQuery, 
       Number(limit), 
-      pagetoken ? String(pagetoken) : undefined
+      pagetoken ? String(pagetoken) : undefined,
+      lat ? Number(lat) : undefined,
+      lng ? Number(lng) : undefined,
+      radius ? Number(radius) : undefined
     );
 
     return res.status(200).json({

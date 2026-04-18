@@ -1,71 +1,79 @@
 .results-table-container {
   background: white;
   border-radius: 8px;
-  overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-top: 30px;
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
 }
 
 .table-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
+  padding: 14px 20px;
   border-bottom: 1px solid #eee;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 20;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
 }
 
 .table-header h3 {
   margin: 0;
   color: #333;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .export-btn {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
+  padding: 8px 14px;
   background: #667eea;
   color: white;
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  transition: all 0.3s;
+  transition: all 0.2s;
 }
 
 .export-btn:hover {
   background: #5568d3;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-.export-btn:active {
-  transform: translateY(0);
+  transform: translateY(-1px);
 }
 
 .table-wrapper {
   overflow-x: auto;
+  flex: 1;
 }
 
 .results-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate; /* Required for sticky borders */
+  border-spacing: 0;
   font-size: 14px;
 }
 
 .results-table thead {
   background: #f8f9fa;
-  border-bottom: 2px solid #e9ecef;
 }
 
 .results-table th {
-  padding: 16px;
+  padding: 14px 16px;
   text-align: left;
   font-weight: 600;
   color: #495057;
   white-space: nowrap;
+  position: sticky;
+  top: 49px; /* Exact height of refined table-header */
+  background: #f8f9fa;
+  z-index: 10;
+  border-bottom: 2px solid #e9ecef;
 }
 
 .results-table tbody tr {

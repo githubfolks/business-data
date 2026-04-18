@@ -35,6 +35,71 @@ export class GooglePlacesClient {
   }
 
   /**
+   * Search for places using the NEW Google Places API
+   * This is more expensive but returns Phone and Website in the initial response.
+   */
+  async searchTextNew(query: string, options: Partial<GooglePlacesSearchOptions> = {}): Promise<any> {
+    try {
+      const headers: any = {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': this.apiKey,
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.internationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.types,places.businessStatus,places.addressComponents'
+      };
+
+      const data: any = {
+        textQuery: query,
+        languageCode: options.language || 'en'
+      };
+
+      // Set location bias if coordinates and radius are available
+      if (options.location) {
+        data.locationBias = {
+          circle: {
+            center: {
+              latitude: options.location.latitude,
+              longitude: options.location.longitude
+            },
+            radius: (options.radius || 5) * 1000 // Convert km to meters
+          }
+        };
+      }
+
+      console.log(`Places API (New): Querying "${query}" with location bias ${options.location?.latitude},${options.location?.longitude}`);
+      
+      const response = await this.client.post('https://places.googleapis.com/v1/places:searchText', data, { headers });
+      
+      return response.data.places || [];
+    } catch (error: any) {
+      const errorData = error.response?.data?.error;
+      if (errorData?.status === 'PERMISSION_DENIED' || errorData?.message?.includes('disabled')) {
+        console.warn('⚠️ Google Places API (New) is not enabled. Falling back to Legacy API...');
+        console.warn('👉 Enable it here for Phone/Website details: https://console.developers.google.com/apis/api/places.googleapis.com/overview');
+        
+        // Return a special flag to indicate fallback
+        return { isFallback: true };
+      }
+      
+      console.error('Places API (New) failure:', error.response?.data || error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Fetch results from NEW API with fallback to Legacy
+   */
+  async searchAllNew(query: string, options: Partial<GooglePlacesSearchOptions> = {}): Promise<any[]> {
+    const results = await this.searchTextNew(query, options);
+    
+    if ((results as any).isFallback) {
+      // Execute legacy search with the same context
+      const legacyResponse = await this.textSearch(query, options);
+      return legacyResponse.results;
+    }
+    
+    return results;
+  }
+
+  /**
    * Search for places using text query
    */
   async textSearch(query: string, options: Partial<GooglePlacesSearchOptions> = {}): Promise<{ results: GooglePlacesDetails[], next_page_token?: string }> {
@@ -54,7 +119,7 @@ export class GooglePlacesClient {
       }
 
       if (options.radius) {
-        params.radius = options.radius;
+        params.radius = options.radius * 1000; // Convert km to meters
       }
 
       const response = await this.client.get(`${this.baseUrl}/place/textsearch/json`, { params });
@@ -82,7 +147,7 @@ export class GooglePlacesClient {
     try {
       const params: any = {
         location: `${location.latitude},${location.longitude}`,
-        radius: options.radius || 1500,
+        radius: (options.radius || 1.5) * 1000, // Convert km to meters
         type: options.type,
         key: this.apiKey,
         language: options.language || 'en',
@@ -110,13 +175,13 @@ export class GooglePlacesClient {
   /**
    * Fetch multiple pages of results (up to 3 pages / 60 results)
    */
-  async searchAll(query: string, maxPages: number = 3): Promise<GooglePlacesDetails[]> {
+  async searchAll(query: string, maxPages: number = 3, options: Partial<GooglePlacesSearchOptions> = {}): Promise<GooglePlacesDetails[]> {
     let allResults: GooglePlacesDetails[] = [];
     let pageToken: string | undefined;
     let pagesFetched = 0;
 
     do {
-      const response = await this.textSearch(query, { pageToken });
+      const response = await this.textSearch(query, { ...options, pageToken });
       allResults = [...allResults, ...response.results];
       pageToken = response.next_page_token;
       pagesFetched++;
@@ -202,13 +267,19 @@ export class GooglePlacesClient {
 
   /**
    * Geocode a pincode/address to get coordinates
+   * @param pincode The postal code to geocode
+   * @param countryCode Optional ISO 3166-1 alpha-2 country code for restriction
    */
-  async geocodePincode(pincode: string): Promise<{ latitude: number, longitude: number } | null> {
+  async geocodePincode(pincode: string, countryCode?: string): Promise<{ latitude: number, longitude: number } | null> {
     try {
-      const params = {
+      const params: any = {
         address: pincode,
         key: this.apiKey,
       };
+
+      if (countryCode) {
+        params.components = `country:${countryCode}`;
+      }
 
       const response = await this.client.get(`${this.baseUrl}/geocode/json`, { params });
 

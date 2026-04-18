@@ -4,12 +4,8 @@ import path from 'path';
 import { rateLimit } from 'express-rate-limit';
 import 'express-async-errors';
 import { config } from './config';
-import { connectDatabase } from './db';
-import ingestRoutes from './routes/ingestRoutes';
 import searchRoutes from './routes/searchRoutes';
 import systemRoutes from './routes/systemRoutes';
-import analyticsRoutes from './routes/analyticsRoutes';
-import recommendationRoutes from './routes/recommendationRoutes';
 
 const app: Express = express();
 
@@ -20,7 +16,7 @@ app.set('trust proxy', 1);
 console.log('Allowed CORS Origins:', config.corsOrigins);
 app.use(cors({ 
   origin: config.corsOrigins,
-  optionsSuccessStatus: 200 // Some legacy browsers (IE11, various SmartTVs) choke on 204
+  optionsSuccessStatus: 200 
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
@@ -46,17 +42,6 @@ const globalLimiter = rateLimit({
   },
 });
 
-const ingestLimiter = rateLimit({
-  windowMs: config.rateLimit.windowMs,
-  max: config.rateLimit.ingestMaxRequests,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    error: 'Too many ingestion requests, please try again later.',
-    status: 429,
-  },
-});
-
 // Apply global rate limiter to all api routes
 app.use('/api/v1', globalLimiter);
 
@@ -64,17 +49,14 @@ app.use('/api/v1', globalLimiter);
 app.get('/api/v1', (_req: Request, res: Response) => {
   return res.status(200).json({
     status: 'ok',
-    message: 'Business Intelligence Platform API v1',
+    message: 'Business Intelligence Platform API v1 (Real-time)',
     docs: '/api/v1/docs',
     health: '/api/v1/health'
   });
 });
 
 // API Routes
-app.use('/api/v1/ingest', ingestLimiter, ingestRoutes);
 app.use('/api/v1/search', searchRoutes);
-app.use('/api/v1/recommendations', recommendationRoutes);
-app.use('/api/v1', analyticsRoutes);
 app.use('/api/v1', systemRoutes);
 
 // Health check root
@@ -84,6 +66,7 @@ app.get('/', (_req: Request, res: Response) => {
     status: 'running',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
+    mode: 'storage-free-realtime'
   });
 });
 
@@ -107,15 +90,12 @@ app.use((error: any, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 // Start server
-async function startServer(): Promise<void> {
+function startServer(): void {
   try {
-    const dbHost = config.databaseUrl.split('@')[1]?.split(':')[0] || 'localhost';
-    console.log(`Connecting to database at: ${dbHost}...`);
-    await connectDatabase();
-
     app.listen(config.port, () => {
       console.log(`Server running on port ${config.port}`);
       console.log(`Environment: ${config.nodeEnv}`);
+      console.log(`Mode: PURE REAL-TIME (No Database)`);
       console.log(`API available at http://localhost:${config.port}`);
     });
   } catch (error) {

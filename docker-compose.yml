@@ -3,7 +3,6 @@ services:
     build: .
     environment:
       - NODE_ENV=${NODE_ENV:-production}
-      - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=redis://redis:6379
       - GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY}
       - PORT=3000
@@ -16,26 +15,6 @@ services:
       - "3001:3000"
     networks:
       - business-net
-      - shared-net
-
-  # postgres-app:
-  #   image: postgres:15-alpine
-  #   environment:
-  #     - POSTGRES_USER=${POSTGRES_USER:-postgres}
-  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-  #     - POSTGRES_DB=${POSTGRES_DB:-app_db}
-  #   ports:
-  #     - "5433:5432"
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
-  #   networks:
-  #     - business-net
-  #     - shared-net
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-app_db}"]
-  #     interval: 5s
-  #     timeout: 5s
-  #     retries: 5
 
   dashboard:
     build:
@@ -61,11 +40,7 @@ services:
 
 volumes:
   redis_data:
-  postgres_data:
 
 networks:
   business-net:
     driver: bridge
-  shared-net:
-    external: true
-    name: itgoa_itgoa-network

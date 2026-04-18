@@ -31,8 +31,8 @@ export const searchAPI = {
   getStatistics: () =>
     api.get('/search/stats'),
   
-  externalSearch: (query, limit = 20, pagetoken = null, pincode = null, radius = null) =>
-    api.get('/search/external', { params: { query, limit, pagetoken, pincode, radius } }),
+  externalSearch: (query, limit = 20, pagetoken = null, pincode = null, radius = null, country = null, deepSearch = false) =>
+    api.get('/search/external', { params: { query, limit, pagetoken, pincode, radius, country, deepSearch } }),
 };
 
 export const analyticsAPI = {

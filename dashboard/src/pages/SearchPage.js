@@ -10,18 +10,12 @@ function SearchPage({ setError }) {
   const navigate = useNavigate();
   const [businessName, setBusinessName] = useState('');
   const [pincode, setPincode] = useState('');
-  const [radius, setRadius] = useState(5);
+  const [country, setCountry] = useState('US');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState(null);
-  const [nextPageToken, setNextPageToken] = useState(null);
-  const [limit, setLimit] = useState(20);
   const [source, setSource] = useState('local');
-  
-  // Track last used search params for "Load More"
-  const [lastSearchParams, setLastSearchParams] = useState(null);
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -32,55 +26,33 @@ function SearchPage({ setError }) {
 
     setLoading(true);
     setHasSearched(true);
-    setNextPageToken(null);
     
     const params = {
-      query: businessName || 'businesses', // Fallback if name is empty
-      limit,
+      query: businessName || 'businesses',
+      limit: 1000,
       pincode: pincode.trim() || null,
-      radius: radius
+      radius: 10,
+      country: country || null,
+      deepSearch: true
     };
-    
-    setLastSearchParams(params);
 
     try {
       const response = await searchAPI.externalSearch(
         params.query, 
         params.limit, 
-        null, 
+        null, // pageToken (always null for new deep searches)
         params.pincode, 
-        params.radius
+        params.radius,
+        params.country,
+        params.deepSearch
       );
       setResults(response.data.businesses || []);
-      setNextPageToken(response.data.next_page_token);
       setSource(response.data.source || 'google_places_realtime');
     } catch (err) {
       setError('Search failed: ' + (err.response?.data?.error || err.message));
       setResults([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleLoadMore = async () => {
-    if (!nextPageToken || loadingMore || !lastSearchParams) return;
-
-    setLoadingMore(true);
-    try {
-      const response = await searchAPI.externalSearch(
-        lastSearchParams.query, 
-        lastSearchParams.limit, 
-        nextPageToken,
-        lastSearchParams.pincode,
-        lastSearchParams.radius
-      );
-      const newBusinesses = response.data.businesses || [];
-      setResults(prev => [...prev, ...newBusinesses]);
-      setNextPageToken(response.data.next_page_token);
-    } catch (err) {
-      setError('Failed to load more results: ' + (err.response?.data?.error || err.message));
-    } finally {
-      setLoadingMore(false);
     }
   };
 
@@ -116,39 +88,33 @@ function SearchPage({ setError }) {
                   className="search-input"
                 />
               </div>
-            </div>
-            
-            <div className="search-form-row secondary-row">
-              <div className="input-field range-field">
-                <label htmlFor="radius">Search Range: <span className="range-value">{radius} km</span></label>
-                <input
-                  id="radius"
-                  type="range"
-                  min="1"
-                  max="50"
-                  step="1"
-                  value={radius}
-                  onChange={(e) => setRadius(Number(e.target.value))}
-                  className="range-slider"
-                />
-              </div>
-              
-              <div className="input-field limit-field">
-                <label htmlFor="limit">Display</label>
+              <div className="input-field country-field">
+                <label htmlFor="country">Target Country</label>
                 <select 
-                  id="limit"
-                  value={limit} 
-                  onChange={(e) => setLimit(Number(e.target.value))}
-                  className="limit-select"
+                  id="country"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  className="search-input country-select"
                 >
-                  <option value={20}>20 results</option>
-                  <option value={50}>50 results</option>
-                  <option value={100}>100 results</option>
+                  <option value="">Auto-Detect / World</option>
+                  <option value="US">United States</option>
+                  <option value="IN">India</option>
+                  <option value="GB">United Kingdom</option>
+                  <option value="CA">Canada</option>
+                  <option value="AU">Australia</option>
+                  <option value="DE">Germany</option>
+                  <option value="FR">France</option>
+                  <option value="IT">Italy</option>
+                  <option value="ES">Spain</option>
+                  <option value="AE">United Arab Emirates</option>
+                  <option value="SG">Singapore</option>
                 </select>
               </div>
-
+            </div>
+            
+            <div className="search-form-row actions-row">
               <button type="submit" className="search-button-large" disabled={loading}>
-                {loading ? 'Searching...' : 'Search Places'}
+                {loading ? 'Performing Deep Search...' : 'Start 1000-Record Search'}
               </button>
             </div>
           </form>
@@ -179,18 +145,6 @@ function SearchPage({ setError }) {
                 businesses={results} 
                 onRowClick={handleBusinessClick} 
               />
-              
-              {nextPageToken && (
-                <div className="pagination-footer">
-                  <button 
-                    className="load-more-button" 
-                    onClick={handleLoadMore}
-                    disabled={loadingMore}
-                  >
-                    {loadingMore ? 'Loading more...' : 'Load More Results'}
-                  </button>
-                </div>
-              )}
             </div>
           ) : hasSearched ? (
             <div className="panel-empty">

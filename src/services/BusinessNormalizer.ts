@@ -13,11 +13,15 @@ export class BusinessNormalizer {
       components.find((c: any) => c.types.includes('locality'))?.long_name ||
       components.find((c: any) => c.types.includes('postal_town'))?.long_name ||
       components.find((c: any) => c.types.includes('sublocality_level_1'))?.long_name ||
-      components.find((c: any) => c.types.includes('administrative_area_level_2'))?.long_name;
+      components.find((c: any) => c.types.includes('administrative_area_level_2'))?.long_name ||
+      (place.formatted_address ? place.formatted_address.split(',')[place.formatted_address.split(',').length - 3]?.trim() : '');
 
     const state = components.find((c: any) => c.types.includes('administrative_area_level_1'))?.long_name;
     const postal_code = components.find((c: any) => c.types.includes('postal_code'))?.long_name;
-    const country = components.find((c: any) => c.types.includes('country'))?.long_name;
+    const country = 
+      components.find((c: any) => c.types.includes('country'))?.long_name ||
+      (place.formatted_address ? place.formatted_address.split(',')[place.formatted_address.split(',').length - 1]?.trim() : '');
+
     const latitude = place.geometry?.location?.lat;
     const longitude = place.geometry?.location?.lng;
 
@@ -66,15 +70,65 @@ export class BusinessNormalizer {
       opening_hours: openingHours,
       verified: place.verified_operator === true,
       status: place.business_status === 'OPERATIONAL' ? 'active' : 'inactive',
-      attributes: {
-        google_rating: place.rating,
-        price_level: place.price_level,
-        types: place.types,
-        photos: place.photos?.map((p: any) => ({ url: p.photo_reference })),
-        permanently_closed: place.permanently_closed,
-      },
       source_data: place,
       search_text: searchText,
+    };
+  }
+
+  /**
+   * Universal normalizer that detects format
+   */
+  static normalizeAnyGooglePlace(place: any): Partial<IBusinessDocument> {
+    if (place.id && place.displayName) {
+      return this.normalizeGooglePlaceNew(place);
+    }
+    return this.normalizeGooglePlace(place);
+  }
+
+  /**
+   * Normalize Google Places API (NEW) response
+   */
+  static normalizeGooglePlaceNew(place: any): Partial<IBusinessDocument> {
+    const components = place.addressComponents || [];
+    
+    // Safety check for empty results
+    if (!place) return {};
+
+    const city = 
+      components.find((c: any) => c.types.includes('locality'))?.longText ||
+      components.find((c: any) => c.types.includes('postal_town'))?.longText ||
+      components.find((c: any) => c.types.includes('sublocality_level_1'))?.longText;
+
+    const state = components.find((c: any) => c.types.includes('administrative_area_level_1'))?.shortText;
+    const postal_code = components.find((c: any) => c.types.includes('postal_code'))?.longText;
+    const country = components.find((c: any) => c.types.includes('country'))?.shortText;
+
+    const phone_numbers: string[] = [];
+    if (place.internationalPhoneNumber) phone_numbers.push(place.internationalPhoneNumber);
+    if (place.nationalPhoneNumber) phone_numbers.push(place.nationalPhoneNumber);
+
+    return {
+      external_id: `google_${place.id}`,
+      provider: 'google_places',
+      name: place.displayName?.text || 'Unknown',
+      category: this.normalizeCategory(place.types?.[0]),
+      subcategories: place.types?.slice(1).map((t: string) => this.normalizeCategory(t)),
+      street: place.formattedAddress?.split(',')[0] || '',
+      city: city || '',
+      state: state || '',
+      postal_code: postal_code || '',
+      country: country || '',
+      latitude: place.location?.latitude,
+      longitude: place.location?.longitude,
+      phone_numbers,
+      website: place.websiteUri,
+      rating: place.rating,
+      review_count: place.userRatingCount,
+      status: place.businessStatus === 'OPERATIONAL' ? 'active' : 'inactive',
+      verified: true,
+      source_data: place,
+      created_at: new Date(),
+      updated_at: new Date(),
     };
   }
 

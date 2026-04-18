@@ -282,14 +282,35 @@ export class BusinessSearchService {
   /**
    * Perform real-time external search via Google Places (no DB ingestion)
    */
-  async externalSearch(query: string, limit: number = 20, pageToken?: string): Promise<{ businesses: IBusinessDocument[], next_page_token?: string }> {
+  async externalSearch(
+    query: string, 
+    limit: number = 20, 
+    pageToken?: string,
+    latitude?: number,
+    longitude?: number,
+    radius?: number
+  ): Promise<{ businesses: IBusinessDocument[], next_page_token?: string }> {
     const { GooglePlacesClient } = require('./GooglePlacesClient');
     const { BusinessNormalizer } = require('./BusinessNormalizer');
     
     const googlePlacesClient = new GooglePlacesClient();
-    console.log(`External search for: "${query}", limit: ${limit}, pageToken: ${pageToken ? 'PRESENT' : 'NONE'}`);
-    const { results: places, next_page_token } = await googlePlacesClient.textSearch(query, { pageToken });
+    console.log(`External search for: "${query}", limit: ${limit}, pageToken: ${pageToken ? 'PRESENT' : 'NONE'}, coords: ${latitude},${longitude}, radius: ${radius}`);
     
+    let response;
+    if (latitude && longitude) {
+      // Use text search with location bias/restriction
+      // We can append the location filter or use specific params if textSearch supports it
+      // Standard Google API textSearch supports location and radius
+      response = await googlePlacesClient.textSearch(query, { 
+        pageToken,
+        location: { latitude, longitude },
+        radius: radius ? radius * 1000 : 1500 // Convert km to meters
+      });
+    } else {
+      response = await googlePlacesClient.textSearch(query, { pageToken });
+    }
+    
+    const { results: places, next_page_token } = response;
     console.log(`Google results: ${places.length}, fresh next_page_token: ${next_page_token ? 'YES' : 'NO'}`);
     
     if (places.length === 0) return { businesses: [] };

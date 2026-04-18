@@ -49,6 +49,14 @@ export class GooglePlacesClient {
         params.pagetoken = options.pageToken;
       }
 
+      if (options.location) {
+        params.location = `${options.location.latitude},${options.location.longitude}`;
+      }
+
+      if (options.radius) {
+        params.radius = options.radius;
+      }
+
       const response = await this.client.get(`${this.baseUrl}/place/textsearch/json`, { params });
 
       if (response.data.status !== 'OK' && response.data.status !== 'ZERO_RESULTS') {
@@ -189,6 +197,32 @@ export class GooglePlacesClient {
       return response.data.predictions || [];
     } catch (error) {
       throw new Error(`Failed to autocomplete: ${error}`);
+    }
+  }
+
+  /**
+   * Geocode a pincode/address to get coordinates
+   */
+  async geocodePincode(pincode: string): Promise<{ latitude: number, longitude: number } | null> {
+    try {
+      const params = {
+        address: pincode,
+        key: this.apiKey,
+      };
+
+      const response = await this.client.get(`${this.baseUrl}/geocode/json`, { params });
+
+      if (response.data.status !== 'OK') {
+        if (response.data.status === 'ZERO_RESULTS') return null;
+        throw new Error(`Google Geocoding API error: ${response.data.status}`);
+      }
+
+      const result = response.data.results[0];
+      const { lat, lng } = result.geometry.location;
+
+      return { latitude: lat, longitude: lng };
+    } catch (error) {
+      throw new Error(`Failed to geocode pincode: ${error}`);
     }
   }
 }

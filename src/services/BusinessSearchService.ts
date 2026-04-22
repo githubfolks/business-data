@@ -56,6 +56,21 @@ export class BusinessSearchService {
       };
     }
 
+    // Even if no location is provided, try the New API first to get Phone/Website
+    if (!pageToken) {
+      console.log(`Places API (New): Global search for "${query}"`);
+      const places = await googlePlacesClient.searchAllNew(query, {
+        radius: radius || 5
+      });
+      
+      if (places && places.length > 0) {
+        const businesses = places.map((place: any) => BusinessNormalizer.normalizeAnyGooglePlace(place)) as IBusinessDocument[];
+        return {
+          businesses: (businesses as any[]).filter(b => b.name)
+        };
+      }
+    }
+
     // Fallback to old API for global searches or if no location is provided
     const response = await googlePlacesClient.textSearch(query, { pageToken });
     const { results: places, next_page_token } = response;

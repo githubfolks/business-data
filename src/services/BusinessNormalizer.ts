@@ -95,13 +95,13 @@ export class BusinessNormalizer {
     if (!place) return {};
 
     const city = 
-      components.find((c: any) => c.types.includes('locality'))?.longText ||
-      components.find((c: any) => c.types.includes('postal_town'))?.longText ||
-      components.find((c: any) => c.types.includes('sublocality_level_1'))?.longText;
+      components.find((c: any) => c.types?.includes('locality'))?.longText ||
+      components.find((c: any) => c.types?.includes('postal_town'))?.longText ||
+      components.find((c: any) => c.types?.includes('sublocality_level_1'))?.longText;
 
-    const state = components.find((c: any) => c.types.includes('administrative_area_level_1'))?.shortText;
-    const postal_code = components.find((c: any) => c.types.includes('postal_code'))?.longText;
-    const country = components.find((c: any) => c.types.includes('country'))?.shortText;
+    const state = components.find((c: any) => c.types?.includes('administrative_area_level_1'))?.shortText;
+    const postal_code = components.find((c: any) => c.types?.includes('postal_code'))?.longText;
+    const country = components.find((c: any) => c.types?.includes('country'))?.shortText;
 
     const phone_numbers: string[] = [];
     if (place.internationalPhoneNumber) phone_numbers.push(place.internationalPhoneNumber);

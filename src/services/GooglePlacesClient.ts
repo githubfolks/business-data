@@ -51,7 +51,6 @@ export class GooglePlacesClient {
         languageCode: options.language || 'en'
       };
 
-      // Set location bias if coordinates and radius are available
       if (options.location) {
         data.locationBias = {
           circle: {
@@ -62,9 +61,10 @@ export class GooglePlacesClient {
             radius: (options.radius || 5) * 1000 // Convert km to meters
           }
         };
+        console.log(`Places API (New): Querying "${query}" with location bias ${options.location.latitude},${options.location.longitude}`);
+      } else {
+        console.log(`Places API (New): Querying "${query}" without location bias (Global search)`);
       }
-
-      console.log(`Places API (New): Querying "${query}" with location bias ${options.location?.latitude},${options.location?.longitude}`);
       
       const response = await this.client.post('https://places.googleapis.com/v1/places:searchText', data, { headers });
       
